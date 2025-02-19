@@ -1,27 +1,21 @@
-from fastapi import FastAPI
-from app import query1, query2
-from app.database import init_db, load_csv_to_db
+from database import init_db, load_csv_to_db
+from query1 import execute_query1
+from query2 import execute_query2
 
-# Create FastAPI instance with metadata
+from fastapi import FastAPI
+
 app = FastAPI(
     title="Data Challenge API",
     description="An API to manage and analyze employee hiring data.",
     version="1.0.0",
-    docs_url="/docs",      # Swagger UI
-    redoc_url="/redoc"     # ReDoc UI
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# Health Check Route
-@app.get("/healthcheck")
-def health_check():
-    return {"status": "ok"}
-
-# Initial Route to check API status
 @app.get("/")
 def read_root():
     return {"message": "API is running successfully!"}
 
-# Initialize database tables
 @app.get("/init-db")
 def initialize_database():
     try:
@@ -30,7 +24,6 @@ def initialize_database():
     except Exception as e:
         return {"error": str(e)}
 
-# Load data from CSV into database
 @app.get("/load-data")
 def load_data():
     try:
@@ -39,20 +32,18 @@ def load_data():
     except Exception as e:
         return {"error": str(e)}
 
-# Query 1: Hired Employees by Quarter
-@app.get("/hired-employees-by-quarter")
-def hired_employees_by_quarter():
+@app.get("/query1")
+def run_query1():
     try:
-        result = query1.get_hired_employees_by_quarter()
-        return {"data": result}
+        result = execute_query1()
+        return {"result": result}
     except Exception as e:
         return {"error": str(e)}
 
-# Query 2: Departments Above Average Hires
-@app.get("/departments-above-average")
-def departments_above_average():
+@app.get("/query2")
+def run_query2():
     try:
-        result = query2.get_departments_above_average()
-        return {"data": result}
+        result = execute_query2()
+        return {"result": result}
     except Exception as e:
         return {"error": str(e)}
