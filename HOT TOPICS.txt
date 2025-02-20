@@ -1,0 +1,133 @@
+
+Start API
+
+uvicorn main:app --reload
+uvicorn main:app --reload --log-level debug
+
+python -c "import sqlite3; conn = sqlite3.connect('data_challenge.db'); cursor = conn.cursor(); cursor.execute('SELECT name FROM sqlite_master WHERE type=\'table\';'); print(cursor.fetchall()); conn.close()"
+
+EXECUTE QUERIES
+
+cd C:\Users\jaqueliner\data_challenge
+
+python
+import sqlite3
+
+# Now create the connection
+conn = sqlite3.connect('data_challenge.db')
+
+
+python query2.py
+
+python query2.py
+
+departments.csv
+jobs.csv
+hired_employees.csv
+
+
+[
+  "departments.csv",
+  "jobs.csv",
+  "hired_employees.csv"
+]
+
+python reset_db.py
+
+
+CREATE TABLES
+python
+
+import sqlite3
+
+conn = sqlite3.connect('data_challenge.db')
+cursor = conn.cursor()
+
+# CREATE TABLE departments
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY,
+        department_name TEXT
+    );
+""")
+
+# CREATE TABLE jobs
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS jobs (
+        id INTEGER PRIMARY KEY,
+        job_name TEXT
+    );
+""")
+
+# CREATE TABLE hired_employees
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS hired_employees (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        datetime TEXT,
+        department_id INTEGER,
+        job_id INTEGER
+    );
+""")
+
+conn.commit()
+conn.close()
+
+print("Tabelas criadas com sucesso.")
+
+
+
+
+----------------------------------------------
+DELETE EVERYTHING OF DB
+
+
+import sqlite3
+
+# Connect to SQLite database
+conn = sqlite3.connect('data_challenge.db')
+cursor = conn.cursor()
+
+# Step 1: Drop existing tables if they exist
+cursor.execute("DROP TABLE IF EXISTS departments")
+cursor.execute("DROP TABLE IF EXISTS jobs")
+cursor.execute("DROP TABLE IF EXISTS hired_employees")
+print("Existing tables dropped successfully.")
+
+# Step 2: Create departments table
+cursor.execute("""
+    CREATE TABLE departments (
+        id INTEGER PRIMARY KEY,
+        department_name TEXT NOT NULL
+    )
+""")
+print("Table 'departments' created.")
+
+# Step 3: Create jobs table
+cursor.execute("""
+    CREATE TABLE jobs (
+        id INTEGER PRIMARY KEY,
+        job_name TEXT NOT NULL
+    )
+""")
+print("Table 'jobs' created.")
+
+# Step 4: Create hired_employees table
+cursor.execute("""
+    CREATE TABLE hired_employees (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        datetime TEXT NOT NULL,
+        department_id INTEGER,
+        job_id INTEGER,
+        FOREIGN KEY (department_id) REFERENCES departments(id),
+        FOREIGN KEY (job_id) REFERENCES jobs(id)
+    )
+""")
+print("Table 'hired_employees' created.")
+
+# Commit changes and close connection
+conn.commit()
+conn.close()
+
+print("Database reset and tables created successfully.")
