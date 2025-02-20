@@ -1,11 +1,7 @@
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from database import init_db, load_csv_to_db
-from query1 import execute_query1
-from query2 import execute_query2
+from fastapi import FastAPI, Query
+from fastapi.responses import JSONResponse, HTMLResponse
 import sqlite3
 
-# Create FastAPI instance
 app = FastAPI(
     title="Data Challenge API",
     description="An API to manage and analyze employee hiring data.",
@@ -14,161 +10,184 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Health Check
-@app.get("/healthcheck", tags=["Health"])
-def health_check():
-    return {"status": "ok"}
+# API Status
+@app.get("/status", tags=["API Status"])
+def get_status():
+    return {"status": "API is running successfully!"}
 
-# Initialize Database
-@app.get("/init-db", tags=["Database"])
-def initialize_database():
-    try:
-        init_db()
-        return {"message": "Database initialized successfully!"}
-    except Exception as e:
-        return {"error": str(e)}
+# Departments Endpoints
+@app.get("/departments/json", tags=["Departments"])
+def get_departments_json():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM departments")
+    data = cursor.fetchall()
+    conn.close()
+    return JSONResponse(content={"departments": data})
 
-# Load CSV Data into Database
-@app.get("/load-data", tags=["Database"])
-def load_data():
-    try:
-        load_csv_to_db()
-        return {"message": "Data loaded successfully into the database!"}
-    except Exception as e:
-        return {"error": str(e)}
+@app.get("/departments/html", tags=["Departments"])
+def get_departments_html():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM departments")
+    data = cursor.fetchall()
+    conn.close()
+    html_content = "<h2>Departments Table</h2><table border='1'><tr><th>ID</th><th>Department Name</th></tr>"
+    for row in data:
+        html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td></tr>"
+    html_content += "</table>"
+    return HTMLResponse(content=html_content)
 
-# View All Departments (HTML Table)
-@app.get("/departments", tags=["Tables"], response_class=HTMLResponse)
-def get_departments():
-    try:
-        conn = sqlite3.connect("data_challenge.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM departments")
-        rows = cursor.fetchall()
-        conn.close()
+# Jobs Endpoints
+@app.get("/jobs/json", tags=["Jobs"])
+def get_jobs_json():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM jobs")
+    data = cursor.fetchall()
+    conn.close()
+    return JSONResponse(content={"jobs": data})
 
-        # Generate HTML Table
-        html_content = "<h2>Departments Table</h2><table border='1'><tr><th>ID</th><th>Department Name</th></tr>"
-        for row in rows:
-            html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td></tr>"
-        html_content += "</table>"
-        return HTMLResponse(content=html_content)
-    except Exception as e:
-        return HTMLResponse(content=f"<h3>Error: {str(e)}</h3>")
+@app.get("/jobs/html", tags=["Jobs"])
+def get_jobs_html():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM jobs")
+    data = cursor.fetchall()
+    conn.close()
+    html_content = "<h2>Jobs Table</h2><table border='1'><tr><th>ID</th><th>Job Name</th></tr>"
+    for row in data:
+        html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td></tr>"
+    html_content += "</table>"
+    return HTMLResponse(content=html_content)
 
-# View All Jobs (HTML Table)
-@app.get("/jobs", tags=["Tables"], response_class=HTMLResponse)
-def get_jobs():
-    try:
-        conn = sqlite3.connect("data_challenge.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM jobs")
-        rows = cursor.fetchall()
-        conn.close()
+# Hired Employees Endpoints
+@app.get("/hired_employees/json", tags=["Hired Employees"])
+def get_hired_employees_json():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM hired_employees")
+    data = cursor.fetchall()
+    conn.close()
+    return JSONResponse(content={"hired_employees": data})
 
-        html_content = "<h2>Jobs Table</h2><table border='1'><tr><th>ID</th><th>Job Title</th></tr>"
-        for row in rows:
-            html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td></tr>"
-        html_content += "</table>"
-        return HTMLResponse(content=html_content)
-    except Exception as e:
-        return HTMLResponse(content=f"<h3>Error: {str(e)}</h3>")
+@app.get("/hired_employees/html", tags=["Hired Employees"])
+def get_hired_employees_html():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM hired_employees")
+    data = cursor.fetchall()
+    conn.close()
+    html_content = "<h2>Hired Employees Table</h2><table border='1'><tr><th>ID</th><th>Name</th><th>Datetime</th><th>Department ID</th><th>Job ID</th></tr>"
+    for row in data:
+        html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td></tr>"
+    html_content += "</table>"
+    return HTMLResponse(content=html_content)
 
-# View All Hired Employees (HTML Table)
-@app.get("/hired-employees", tags=["Tables"], response_class=HTMLResponse)
-def get_hired_employees():
-    try:
-        conn = sqlite3.connect("data_challenge.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM hired_employees")
-        rows = cursor.fetchall()
-        conn.close()
+# Query 1 Endpoints
+@app.get("/query1/json", tags=["Queries"], description="Number of employees hired for each job and department in 2021 divided by quarter, ordered alphabetically by department and job")
+def execute_query1_json():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    query = """
+        SELECT j.job AS job_name, d.department AS department_name,
+               strftime('%Y', h.datetime) AS year,
+               CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 1 AND 3 THEN 'Q1'
+                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 4 AND 6 THEN 'Q2'
+                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 7 AND 9 THEN 'Q3'
+                    ELSE 'Q4' END AS quarter,
+               COUNT(*) AS total_hired
+        FROM hired_employees h
+        JOIN jobs j ON h.job_id = j.id
+        JOIN departments d ON h.department_id = d.id
+        WHERE strftime('%Y', h.datetime) = '2021'
+        GROUP BY j.job, d.department, year, quarter
+        ORDER BY d.department, j.job
+    """
+    cursor.execute(query)
+    data = cursor.fetchall()
+    conn.close()
+    return JSONResponse(content={"query1_results": data})
 
-        html_content = "<h2>Hired Employees Table</h2><table border='1'><tr><th>ID</th><th>Name</th><th>DateTime</th><th>Department ID</th><th>Job ID</th></tr>"
-        for row in rows:
-            html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td></tr>"
-        html_content += "</table>"
-        return HTMLResponse(content=html_content)
-    except Exception as e:
-        return HTMLResponse(content=f"<h3>Error: {str(e)}</h3>")
+@app.get("/query1/html", tags=["Queries"], description="Number of employees hired for each job and department in 2021 divided by quarter, ordered alphabetically by department and job")
+def execute_query1_html():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    query = """
+        SELECT j.job AS job_name, d.department AS department_name,
+               strftime('%Y', h.datetime) AS year,
+               CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 1 AND 3 THEN 'Q1'
+                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 4 AND 6 THEN 'Q2'
+                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 7 AND 9 THEN 'Q3'
+                    ELSE 'Q4' END AS quarter,
+               COUNT(*) AS total_hired
+        FROM hired_employees h
+        JOIN jobs j ON h.job_id = j.id
+        JOIN departments d ON h.department_id = d.id
+        WHERE strftime('%Y', h.datetime) = '2021'
+        GROUP BY j.job, d.department, year, quarter
+        ORDER BY d.department, j.job
+    """
+    cursor.execute(query)
+    data = cursor.fetchall()
+    conn.close()
+    html_content = "<h2>Query 1 Results</h2><table border='1'><tr><th>Job</th><th>Department</th><th>Year</th><th>Quarter</th><th>Total Hired</th></tr>"
+    for row in data:
+        html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td></tr>"
+    html_content += "</table>"
+    return HTMLResponse(content=html_content)
 
+# Query 2 Endpoints
+@app.get("/query2/json", tags=["Queries"], description="List of ids, name and number of employees hired of each department that hired more employees than the mean of employees hired in 2021 for all the departments, ordered by the number of employees hired (descending)")
+def execute_query2_json():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    query = """
+        WITH dept_hires AS (
+            SELECT d.id, d.department, COUNT(*) AS total_hired
+            FROM hired_employees h
+            JOIN departments d ON h.department_id = d.id
+            WHERE strftime('%Y', h.datetime) = '2021'
+            GROUP BY d.id, d.department
+        ),
+        dept_avg AS (
+            SELECT AVG(total_hired) AS avg_hired FROM dept_hires
+        )
+        SELECT id, department, total_hired
+        FROM dept_hires, dept_avg
+        WHERE total_hired > avg_hired
+        ORDER BY total_hired DESC
+    """
+    cursor.execute(query)
+    data = cursor.fetchall()
+    conn.close()
+    return JSONResponse(content={"query2_results": data})
 
-#  Filter Departments by ID
-@app.get("/departments/{department_id}", tags=["Filters"], response_class=HTMLResponse)
-def get_department_by_id(department_id: int):
-    try:
-        conn = sqlite3.connect("data_challenge.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM departments WHERE id = ?", (department_id,))
-        row = cursor.fetchone()
-        conn.close()
-
-        if row:
-            html_content = f"<h2>Department ID: {row[0]}</h2><p>Name: {row[1]}</p>"
-            return HTMLResponse(content=html_content)
-        else:
-            return HTMLResponse(content="<h3>No department found with that ID.</h3>")
-    except Exception as e:
-        return HTMLResponse(content=f"<h3>Error: {str(e)}</h3>")
-
-# Filter Hired Employees by Year
-@app.get("/hired-employees/year/{year}", tags=["Filters"], response_class=HTMLResponse)
-def get_employees_by_year(year: str):
-    try:
-        conn = sqlite3.connect("data_challenge.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM hired_employees WHERE strftime('%Y', datetime) = ?", (year,))
-        rows = cursor.fetchall()
-        conn.close()
-
-        if rows:
-            html_content = f"<h2>Hired Employees in {year}</h2><table border='1'><tr><th>ID</th><th>Name</th><th>DateTime</th><th>Department ID</th><th>Job ID</th></tr>"
-            for row in rows:
-                html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td></tr>"
-            html_content += "</table>"
-            return HTMLResponse(content=html_content)
-        else:
-            return HTMLResponse(content=f"<h3>No employees hired in {year}.</h3>")
-    except Exception as e:
-        return HTMLResponse(content=f"<h3>Error: {str(e)}</h3>")
-
-# Filter Hired Employees by Department
-@app.get("/hired-employees/department/{department_id}", tags=["Filters"], response_class=HTMLResponse)
-def get_employees_by_department(department_id: int):
-    try:
-        conn = sqlite3.connect("data_challenge.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM hired_employees WHERE department_id = ?", (department_id,))
-        rows = cursor.fetchall()
-        conn.close()
-
-        if rows:
-            html_content = f"<h2>Employees in Department {department_id}</h2><table border='1'><tr><th>ID</th><th>Name</th><th>DateTime</th><th>Department ID</th><th>Job ID</th></tr>"
-            for row in rows:
-                html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td><td>{row[3]}</td><td>{row[4]}</td></tr>"
-            html_content += "</table>"
-            return HTMLResponse(content=html_content)
-        else:
-            return HTMLResponse(content=f"<h3>No employees found in department {department_id}.</h3>")
-    except Exception as e:
-        return HTMLResponse(content=f"<h3>Error: {str(e)}</h3>")
-
-
-
-# Run Query 1
-@app.get("/query1", tags=["Queries"])
-def run_query1():
-    try:
-        result = execute_query1()
-        return {"result": result}
-    except Exception as e:
-        return {"error": str(e)}
-
-# Run Query 2
-@app.get("/query2", tags=["Queries"])
-def run_query2():
-    try:
-        result = execute_query2()
-        return {"result": result}
-    except Exception as e:
-        return {"error": str(e)}
+@app.get("/query2/html", tags=["Queries"], description="List of ids, name and number of employees hired of each department that hired more employees than the mean of employees hired in 2021 for all the departments, ordered by the number of employees hired (descending)")
+def execute_query2_html():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+    query = """
+        WITH dept_hires AS (
+            SELECT d.id, d.department, COUNT(*) AS total_hired
+            FROM hired_employees h
+            JOIN departments d ON h.department_id = d.id
+            WHERE strftime('%Y', h.datetime) = '2021'
+            GROUP BY d.id, d.department
+        ),
+        dept_avg AS (
+            SELECT AVG(total_hired) AS avg_hired FROM dept_hires
+        )
+        SELECT id, department, total_hired
+        FROM dept_hires, dept_avg
+        WHERE total_hired > avg_hired
+        ORDER BY total_hired DESC
+    """
+    cursor.execute(query)
+    data = cursor.fetchall()
+    conn.close()
+    html_content = "<h2>Query 2 Results</h2><table border='1'><tr><th>ID</th><th>Department</th><th>Total Hired</th></tr>"
+    for row in data:
+        html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td></tr>"
+    html_content += "</table>"
+    return HTMLResponse(content=html_content)
