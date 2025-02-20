@@ -1,6 +1,14 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, UploadFile, File, HTTPException, Body
 from fastapi.responses import JSONResponse, HTMLResponse
+from app import upload
+from typing import List
 import sqlite3
+import shutil
+import os
+import pandas as pd
+from query1 import execute_query1_json, execute_query1_html
+from query2 import execute_query2_json, execute_query2_html
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Data Challenge API",
@@ -8,6 +16,16 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
+)
+
+app.include_router(upload.router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # API Status
@@ -90,19 +108,18 @@ def execute_query1_json():
     conn = sqlite3.connect("data_challenge.db")
     cursor = conn.cursor()
     query = """
-        SELECT j.job AS job_name, d.department AS department_name,
-               strftime('%Y', h.datetime) AS year,
-               CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 1 AND 3 THEN 'Q1'
-                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 4 AND 6 THEN 'Q2'
-                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 7 AND 9 THEN 'Q3'
-                    ELSE 'Q4' END AS quarter,
-               COUNT(*) AS total_hired
-        FROM hired_employees h
-        JOIN jobs j ON h.job_id = j.id
-        JOIN departments d ON h.department_id = d.id
-        WHERE strftime('%Y', h.datetime) = '2021'
-        GROUP BY j.job, d.department, year, quarter
-        ORDER BY d.department, j.job
+SELECT d.department_name AS department,
+       j.job_name AS job,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 1 AND 3 THEN 1 ELSE 0 END) AS Q1,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 4 AND 6 THEN 1 ELSE 0 END) AS Q2,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 7 AND 9 THEN 1 ELSE 0 END) AS Q3,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 10 AND 12 THEN 1 ELSE 0 END) AS Q4
+FROM hired_employees h
+JOIN departments d ON h.department_id = d.id
+JOIN jobs j ON h.job_id = j.id
+WHERE strftime('%Y', h.datetime) = '2021'
+GROUP BY d.department_name, j.job_name
+ORDER BY d.department_name, j.job_name;
     """
     cursor.execute(query)
     data = cursor.fetchall()
@@ -114,19 +131,18 @@ def execute_query1_html():
     conn = sqlite3.connect("data_challenge.db")
     cursor = conn.cursor()
     query = """
-        SELECT j.job AS job_name, d.department AS department_name,
-               strftime('%Y', h.datetime) AS year,
-               CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 1 AND 3 THEN 'Q1'
-                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 4 AND 6 THEN 'Q2'
-                    WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 7 AND 9 THEN 'Q3'
-                    ELSE 'Q4' END AS quarter,
-               COUNT(*) AS total_hired
-        FROM hired_employees h
-        JOIN jobs j ON h.job_id = j.id
-        JOIN departments d ON h.department_id = d.id
-        WHERE strftime('%Y', h.datetime) = '2021'
-        GROUP BY j.job, d.department, year, quarter
-        ORDER BY d.department, j.job
+SELECT d.department_name AS department,
+       j.job_name AS job,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 1 AND 3 THEN 1 ELSE 0 END) AS Q1,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 4 AND 6 THEN 1 ELSE 0 END) AS Q2,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 7 AND 9 THEN 1 ELSE 0 END) AS Q3,
+       SUM(CASE WHEN CAST(strftime('%m', h.datetime) AS INTEGER) BETWEEN 10 AND 12 THEN 1 ELSE 0 END) AS Q4
+FROM hired_employees h
+JOIN departments d ON h.department_id = d.id
+JOIN jobs j ON h.job_id = j.id
+WHERE strftime('%Y', h.datetime) = '2021'
+GROUP BY d.department_name, j.job_name
+ORDER BY d.department_name, j.job_name;
     """
     cursor.execute(query)
     data = cursor.fetchall()
@@ -143,20 +159,20 @@ def execute_query2_json():
     conn = sqlite3.connect("data_challenge.db")
     cursor = conn.cursor()
     query = """
-        WITH dept_hires AS (
-            SELECT d.id, d.department, COUNT(*) AS total_hired
-            FROM hired_employees h
-            JOIN departments d ON h.department_id = d.id
-            WHERE strftime('%Y', h.datetime) = '2021'
-            GROUP BY d.id, d.department
-        ),
-        dept_avg AS (
-            SELECT AVG(total_hired) AS avg_hired FROM dept_hires
-        )
-        SELECT id, department, total_hired
-        FROM dept_hires, dept_avg
-        WHERE total_hired > avg_hired
-        ORDER BY total_hired DESC
+WITH department_hires AS (
+    SELECT d.id, d.department_name, COUNT(*) AS total_hired
+    FROM hired_employees h
+    JOIN departments d ON h.department_id = d.id
+    WHERE strftime('%Y', h.datetime) = '2021'
+    GROUP BY d.id, d.department_name
+),
+average_hires AS (
+    SELECT AVG(total_hired) AS avg_hired FROM department_hires
+)
+SELECT dh.id, dh.department_name, dh.total_hired AS hired
+FROM department_hires dh, average_hires ah
+WHERE dh.total_hired > ah.avg_hired
+ORDER BY dh.total_hired DESC;
     """
     cursor.execute(query)
     data = cursor.fetchall()
@@ -168,20 +184,20 @@ def execute_query2_html():
     conn = sqlite3.connect("data_challenge.db")
     cursor = conn.cursor()
     query = """
-        WITH dept_hires AS (
-            SELECT d.id, d.department, COUNT(*) AS total_hired
-            FROM hired_employees h
-            JOIN departments d ON h.department_id = d.id
-            WHERE strftime('%Y', h.datetime) = '2021'
-            GROUP BY d.id, d.department
-        ),
-        dept_avg AS (
-            SELECT AVG(total_hired) AS avg_hired FROM dept_hires
-        )
-        SELECT id, department, total_hired
-        FROM dept_hires, dept_avg
-        WHERE total_hired > avg_hired
-        ORDER BY total_hired DESC
+WITH department_hires AS (
+    SELECT d.id, d.department_name, COUNT(*) AS total_hired
+    FROM hired_employees h
+    JOIN departments d ON h.department_id = d.id
+    WHERE strftime('%Y', h.datetime) = '2021'
+    GROUP BY d.id, d.department_name
+),
+average_hires AS (
+    SELECT AVG(total_hired) AS avg_hired FROM department_hires
+)
+SELECT dh.id, dh.department_name, dh.total_hired AS hired
+FROM department_hires dh, average_hires ah
+WHERE dh.total_hired > ah.avg_hired
+ORDER BY dh.total_hired DESC;
     """
     cursor.execute(query)
     data = cursor.fetchall()
@@ -191,3 +207,35 @@ def execute_query2_html():
         html_content += f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{row[2]}</td></tr>"
     html_content += "</table>"
     return HTMLResponse(content=html_content)
+
+# Batch Insert Endpoint
+@app.post("/batch-insert", tags=["Data Upload"])
+def batch_insert(file: UploadFile = File(...)):
+    try:
+        conn = sqlite3.connect("data_challenge.db")
+        df = pd.read_csv(file.file)
+        if len(df) > 1000:
+            raise HTTPException(status_code=400, detail="Batch size exceeds 1000 rows.")
+        df.to_sql("hired_employees", conn, if_exists='append', index=False)
+        conn.close()
+        return {"status": f"Batch of {len(df)} records inserted successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+@app.delete("/clear-data", tags=["Data Upload"], description="Delete all data from the database tables")
+def clear_data():
+    conn = sqlite3.connect("data_challenge.db")
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM departments")
+        cursor.execute("DELETE FROM jobs")
+        cursor.execute("DELETE FROM hired_employees")
+        conn.commit()
+        conn.close()
+        return JSONResponse(content={"message": "All tables have been cleared."})
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+        
