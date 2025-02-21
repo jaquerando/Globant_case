@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  data_challenge_api:
+    build: .
+    container_name: data_challenge_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    restart: always
+
