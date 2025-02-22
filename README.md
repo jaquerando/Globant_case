@@ -186,3 +186,142 @@ The system prevents the insertion of data with invalid foreign keys.
 
 
 
+
+
+
+
+# Rewriting the project guide after reset
+
+project_guide = """
+# 📘 Data Challenge API - Full Project Guide
+
+## 📋 Table of Contents
+1. [Project Overview](#project-overview)
+2. [Pre requisites](#prerequisites)
+3. [Project Structure](#project-structure)
+4. [Step-by-Step Guide](#step-by-step-guide)
+    - [1. Setting Up the Environment](#1-setting-up-the-environment)
+    - [2. Dockerizing the Application](#2-dockerizing-the-application)
+
+---
+
+## 🎯 1. Project Overview
+The **Data Challenge API** is a RESTful API built with **FastAPI** that manages and analyzes employee hiring data. The API enables users to:
+- Upload CSV files containing department, job, and employee data.
+- Load the data into a **SQLite** database.
+- Run analytical SQL queries.
+- Containerize the entire project using **Docker** for easy deployment.
+
+---
+
+## 2. Prerequisites
+
+Before starting, ensure you have the following tools installed:
+
+### 1. Python 3.11+
+- [Download Python](https://www.python.org/downloads/)
+- Verify installation:
+    ```powershell
+    python --version
+    ```
+
+### 2. Docker & Docker Compose
+- [Download Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- Verify installation:
+    ```powershell
+    docker --version
+    docker-compose --version
+    ```
+
+### 3. SQLite
+- [Download SQLite](https://www.sqlite.org/download.html)
+- Verify installation:
+    ```powershell
+    sqlite3 --version
+    ```
+
+### 4. Python Requirements
+
+```python
+fastapi
+uvicorn
+pandas
+python-multipart
+sqlite3
+```
+---
+
+## 📁 3. Project Structure
+```css
+data_challenge/
+│
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   └── upload.py
+│
+├── data_challenge.db
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 📖 4. Step-by-Step Guide
+
+### ✅ 1. Setting Up the Environment
+⚡ **PowerShell Commands**
+
+1. **Clone the Repository:**
+    ```powershell
+    git clone <repository_url>
+    cd data_challenge
+    ```
+
+2. **Create a Virtual Environment:**
+    ```powershell
+    python -m venv venv
+    .\\venv\\Scripts\\activate
+    ```
+
+3. **Install Dependencies:**
+    ```powershell
+    pip install fastapi uvicorn pandas python-multipart sqlite3
+    ```
+
+4. **Freeze Dependencies to `requirements.txt`:**
+    ```powershell
+    pip freeze > requirements.txt
+    ```
+
+---
+
+## ⚡ PowerShell Commands
+
+
+**Install Dependencies**
+
+```powershell
+pip install -r requirements.txt
+```
+**Run API Locally**
+
+```powershell
+uvicorn main:app --reload
+```
+---
+
+### 2. 🐳 Dockerizing the Application ##
+
+**Build and run the containers:**
+
+```powershell
+docker-compose up --build
+```
+    
+**Stop containers:** 
+```powershell
+docker-compose down
+```
