@@ -7,6 +7,9 @@ This project is part of the **Globant Data Engineering Coding Challenge**. The g
 2. **Load CSV data** into an SQLite database.
 3. **Provide API endpoints** to interact with the stored data.
 
+![image](https://github.com/user-attachments/assets/3361577f-3dbe-429b-9eed-2ed382078c04)
+   
+
 ## Requirements
 - Python 3.11+
 - FastAPI
